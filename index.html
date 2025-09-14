@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Level Up Study</title>
   <style>
-    /* Styles généraux */
     body {
       font-family: 'Arial', sans-serif;
       background: linear-gradient(135deg, #74ebd5, #ACB6E5);
@@ -18,69 +17,18 @@
       color: #333;
     }
 
-    h1 {
-      margin-bottom: 10px;
-      text-align: center;
-    }
-
-    .avatar {
-      font-size: 100px;
-      margin: 20px 0;
-      transition: transform 0.3s;
-    }
-
-    .xp-bar {
-      width: 300px;
-      height: 25px;
-      background: #eee;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-
-    .xp-fill {
-      height: 100%;
-      width: 0%;
-      background: #ffd700;
-      transition: width 0.3s;
-    }
-
-    .timer {
-      font-size: 40px;
-      margin-bottom: 20px;
-    }
-
-    .buttons button {
-      font-size: 18px;
-      padding: 10px 20px;
-      margin: 5px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .buttons button:hover {
-      transform: scale(1.1);
-    }
-
-    .message {
-      font-size: 18px;
-      margin-top: 20px;
-      min-height: 24px;
-      text-align: center;
-    }
-
-    .challenges {
-      margin-top: 20px;
-      text-align: left;
-      width: 300px;
-    }
-
-    .challenge.completed {
-      text-decoration: line-through;
-      color: green;
-    }
+    h1 { margin-bottom: 10px; text-align: center; }
+    .avatar { font-size: 100px; margin: 20px 0; transition: transform 0.3s; }
+    .xp-bar { width: 300px; height: 25px; background: #eee; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .xp-fill { height: 100%; width: 0%; background: #ffd700; transition: width 0.3s; }
+    .timer { font-size: 40px; margin-bottom: 20px; }
+    .buttons button { font-size: 18px; padding: 10px 20px; margin: 5px; border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s; }
+    .buttons button:hover { transform: scale(1.1); }
+    .message { font-size: 18px; margin-top: 20px; min-height: 24px; text-align: center; }
+    .challenges { margin-top: 20px; text-align: left; width: 300px; }
+    .challenge.completed { text-decoration: line-through; color: green; }
+    .settings { margin-bottom: 20px; }
+    .settings input { width: 50px; padding: 5px; margin: 0 5px; border-radius: 5px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -91,6 +39,11 @@
     <div class="xp-fill" id="xpFill"></div>
   </div>
   <div>XP : <span id="xp">0</span> / 100</div>
+
+  <div class="settings">
+    Durée étude (min): <input type="number" id="studyTime" value="25" min="1">  
+    Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
+  </div>
 
   <div class="timer" id="timer">25:00</div>
   <div class="buttons">
@@ -110,10 +63,10 @@
   </div>
 
   <script>
-    // Variables
+    // Variables XP et niveau
     let level = parseInt(localStorage.getItem('level')) || 1;
     let xp = parseInt(localStorage.getItem('xp')) || 0;
-    let xpToLevel = 100;
+    const xpToLevel = 100;
 
     const avatar = document.getElementById('avatar');
     const xpFill = document.getElementById('xpFill');
@@ -122,19 +75,19 @@
     const message = document.getElementById('message');
     const timerEl = document.getElementById('timer');
 
-    let timerDuration = 25 * 60; // 25 min
-    let timer = timerDuration;
+    const studyTimeInput = document.getElementById('studyTime');
+    const breakTimeInput = document.getElementById('breakTime');
+
+    let timer = parseInt(studyTimeInput.value) * 60;
     let timerInterval = null;
     let onBreak = false;
 
-    // Afficher XP et niveau
     function updateUI() {
       xpText.textContent = xp;
       levelText.textContent = level;
       let percent = Math.min((xp / xpToLevel) * 100, 100);
       xpFill.style.width = percent + '%';
 
-      // Avatar évolutif selon le niveau
       if(level < 3) avatar.textContent = '🐣';
       else if(level < 5) avatar.textContent = '🐥';
       else if(level < 8) avatar.textContent = '🐔';
@@ -146,7 +99,12 @@
 
     updateUI();
 
-    // Timer
+    function updateTimerDisplay() {
+      let minutes = Math.floor(timer / 60);
+      let seconds = timer % 60;
+      timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    }
+
     function startTimer() {
       if(timerInterval) return;
       timerInterval = setInterval(() => {
@@ -156,38 +114,23 @@
           clearInterval(timerInterval);
           timerInterval = null;
           if(!onBreak) {
-            gainXP(50); // +50 XP pour session
-            message.textContent = "Session terminée! 🎉 Prends ta pause de 5 min.";
+            gainXP(50);
+            message.textContent = "Session terminée! 🎉 Prends ta pause.";
             onBreak = true;
-            timer = 5 * 60; // pause 5 min
+            timer = parseInt(breakTimeInput.value) * 60;
             startTimer();
             checkChallenges();
           } else {
             message.textContent = "Pause terminée! Retour à l'étude 💪";
             onBreak = false;
-            timer = 25 * 60;
+            timer = parseInt(studyTimeInput.value) * 60;
           }
         }
       }, 1000);
     }
 
-    function pauseTimer() {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-
-    function resetTimer() {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      timer = onBreak ? 5 * 60 : 25 * 60;
-      updateTimerDisplay();
-    }
-
-    function updateTimerDisplay() {
-      let minutes = Math.floor(timer / 60);
-      let seconds = timer % 60;
-      timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
-    }
+    function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
+    function resetTimer() { clearInterval(timerInterval); timerInterval = null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; updateTimerDisplay(); }
 
     function gainXP(amount) {
       xp += amount;
@@ -199,7 +142,6 @@
       updateUI();
     }
 
-    // Défis simples
     function checkChallenges() {
       const challenge1 = document.getElementById('challenge1');
       const challenge2 = document.getElementById('challenge2');
@@ -208,10 +150,18 @@
       if(level >= 2) challenge2.classList.add('completed');
     }
 
-    // Boutons
     document.getElementById('startBtn').addEventListener('click', startTimer);
     document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
     document.getElementById('resetBtn').addEventListener('click', resetTimer);
+
+    studyTimeInput.addEventListener('change', () => {
+      if(!onBreak) timer = parseInt(studyTimeInput.value) * 60;
+      updateTimerDisplay();
+    });
+    breakTimeInput.addEventListener('change', () => {
+      if(onBreak) timer = parseInt(breakTimeInput.value) * 60;
+      updateTimerDisplay();
+    });
 
     updateTimerDisplay();
   </script>
