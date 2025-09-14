@@ -68,9 +68,9 @@ const stopAlarmBtn = document.getElementById('stopAlarmBtn');
 const studyTimeInput = document.getElementById('studyTime');
 const breakTimeInput = document.getElementById('breakTime');
 
+let onBreak = false;
 let timer = parseInt(studyTimeInput.value) * 60;
 let timerInterval = null;
-let onBreak = false;
 let endTime = null;
 
 const emojis = ['🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','👑','🏆','✨','🌟','💫','🌈','🔥','⚡','🌙','☀️','🌻','🌸','🍀','🍎','🍇','🍉','🍌','🍓','🥑','🥦','🥕','🌽','🏀','⚽','🏐','🎾','🎮','🎲','🎯','🎹','🎸','🥁','🚗','🚀','🛸','🚁','🚤','🛶','🏰','🏯','🏟️','🗼','🎁','🎈','🎉','🎊','🎃','🎄','🎂','🍰','🍩','🍪','💎','🔮','🪐','🧸','🛍️','📚','📖','✏️','🖊️','🖌️','🛹','🚴','🏊','🤹','🧗','🪁','🎣','🪀','🛷','🪃','🦋','🐝','🐞','🕊️','🦅','🦉','🦄','🐙','🦑','🦐','🧩','🧸','🪀','🪁','🪄','🎤','🎧','🎼','🎷','🎺','🛡️','⚔️','🏹','🗡️','🪓','⛏️','🪃','🧱','🪜','🛎️'];
@@ -80,13 +80,7 @@ function updateUI() {
   levelText.textContent = level;
   let percent = Math.min((xp / xpToLevel) * 100, 100);
   xpFill.style.width = percent + '%';
-
-  if(level === 100){
-    avatar.innerHTML = '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" style="width:100px;">';
-  } else {
-    avatar.textContent = emojis[Math.min(level-1, emojis.length-1)];
-  }
-
+  avatar.innerHTML = (level===100) ? '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" style="width:100px;">' : emojis[Math.min(level-1, emojis.length-1)];
   localStorage.setItem('xp', xp);
   localStorage.setItem('level', level);
 }
@@ -99,15 +93,8 @@ function updateTimerDisplay() {
 
 alarmSelect.addEventListener('change', ()=> { alarm.src = alarmSelect.value; });
 
-// Mettre à jour le timer quand l’utilisateur change les valeurs
-studyTimeInput.addEventListener('change', ()=>{
-  if(!onBreak) timer = parseInt(studyTimeInput.value)*60;
-  updateTimerDisplay();
-});
-breakTimeInput.addEventListener('change', ()=>{
-  if(onBreak) timer = parseInt(breakTimeInput.value)*60;
-  updateTimerDisplay();
-});
+studyTimeInput.addEventListener('change', ()=>{ if(!onBreak) { timer = parseInt(studyTimeInput.value)*60; updateTimerDisplay(); } });
+breakTimeInput.addEventListener('change', ()=>{ if(onBreak) { timer = parseInt(breakTimeInput.value)*60; updateTimerDisplay(); } });
 
 function startTimer() {
   if(timerInterval) return;
@@ -115,8 +102,7 @@ function startTimer() {
   endTime = Date.now() + timer*1000;
   localStorage.setItem('endTime', endTime);
   localStorage.setItem('onBreak', onBreak);
-
-  timerInterval = setInterval(() => {
+  timerInterval = setInterval(()=>{
     timer = Math.round((endTime - Date.now())/1000);
     if(timer <= 0){
       clearInterval(timerInterval);
@@ -133,7 +119,6 @@ stopAlarmBtn.addEventListener('click', ()=>{
   stopAlarmBtn.style.display = 'none';
   alarm.pause();
   alarm.currentTime = 0;
-
   if(!onBreak){
     const earnedXP = parseInt(studyTimeInput.value)*2;
     gainXP(earnedXP);
@@ -149,7 +134,52 @@ stopAlarmBtn.addEventListener('click', ()=>{
   startTimer();
 });
 
-function pauseTimer(){ clearInterval(timerInterval); timerInterval = null; }
-function resetTimer(){ 
-  clearInterval(timerInterval); 
-  timerInterval
+function pauseTimer(){ clearInterval(timerInterval); timerInterval=null; }
+function resetTimer(){ clearInterval(timerInterval); timerInterval=null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; updateTimerDisplay(); }
+
+function gainXP(amount){
+  xp += amount;
+  const xpPopup = document.createElement('div');
+  xpPopup.textContent = `+${amount} XP`;
+  xpPopup.style.position = 'absolute';
+  xpPopup.style.top='50%';
+  xpPopup.style.left='50%';
+  xpPopup.style.transform='translate(-50%,-50%)';
+  xpPopup.style.fontSize='24px';
+  xpPopup.style.color='gold';
+  xpPopup.style.fontWeight='bold';
+  xpPopup.style.transition='all 1s ease-out';
+  document.body.appendChild(xpPopup);
+  setTimeout(()=>{ xpPopup.style.top='30%'; xpPopup.style.opacity='0'; },50);
+  setTimeout(()=>{ document.body.removeChild(xpPopup); },1050);
+  while(xp>=xpToLevel){ xp -= xpToLevel; level++; avatar.style.transform='scale(1.5)'; setTimeout(()=>{ avatar.style.transform='scale(1)'; },300);}
+  updateUI();
+}
+
+document.getElementById('startBtn').addEventListener('click', startTimer);
+document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
+document.getElementById('resetBtn').addEventListener('click', resetTimer);
+
+document.getElementById('resetAllBtn').addEventListener('click', ()=>{
+  let confirmations=0;
+  function ask(){ if(confirm("Êtes-vous sûr ?")){ confirmations++; if(confirmations<3) ask(); else{ localStorage.clear(); xp=0; level=1; onBreak=false; clearInterval(timerInterval); timerInterval=null; timer=parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); updateUI(); message.textContent="Tout a été réinitialisé ✅"; } } }
+  ask();
+});
+
+window.addEventListener('load', ()=>{
+  let savedEndTime = localStorage.getItem('endTime');
+  if(savedEndTime){
+    endTime = parseInt(savedEndTime);
+    onBreak = localStorage.getItem('onBreak')==='true';
+    timer = Math.round((endTime - Date.now())/1000);
+    if(timer<0) timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
+    updateTimerDisplay();
+    updateUI();
+  }
+});
+
+updateUI();
+updateTimerDisplay();
+</script>
+</body>
+</html>
