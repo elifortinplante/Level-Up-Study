@@ -75,15 +75,57 @@ const studyTimeInput = document.getElementById('studyTime');
 const breakTimeInput = document.getElementById('breakTime');
 const objectivesEl = document.getElementById('objectives');
 
-let onBreak = false;
-let timer = parseInt(studyTimeInput.value)*60;
-let timerInterval = null;
-let endTime = null;
-
 const emojis = ['🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','👑','🏆','✨','🌟','💫','🌈','🔥','⚡','🌙','☀️','🌻','🌸','🍀','🍎','🍇','🍉','🍌','🍓','🥑','🥦','🥕','🌽','🏀','⚽','🏐','🎾','🎮','🎲','🎯','🎹','🎸','🥁','🚗','🚀','🛸','🚁','🚤','🛶','🏰','🏯','🏟️','🗼','🎁','🎈','🎉','🎊','🎃','🎄','🎂','🍰','🍩','🍪','💎','🔮','🪐','🧸','🛍️','📚','📖','✏️','🖊️','🖌️','🛹','🚴','🏊','🤹','🧗','🪁','🎣','🪀','🛷','🪃','🦋','🐝','🐞','🕊️','🦅','🦉','🦄','🐙','🦑','🦐','🧩','🧸','🪀','🪁','🪄','🎤','🎧','🎼','🎷','🎺','🛡️','⚔️','🏹','🗡️','🪓','⛏️','🪃','🧱','🪜','🛎️'];
 
 let streak = JSON.parse(localStorage.getItem('streak')) || { count: 0, lastDate: null };
 let objectives = { dailyMinutes: 0 };
+
+// ------------------- TIMER / PAUSE / REPRISE -------------------
+let timerInterval = null;
+let timeLeft = parseInt(studyTimeInput.value) * 60; // temps restant
+onBreak = false;
+
+function updateTimerDisplay() {
+  let minutes = Math.floor(timeLeft / 60);
+  let seconds = timeLeft % 60;
+  timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+}
+
+function startTimer() {
+  if (timerInterval) return;
+  // on reprend exactement où on s'était arrêté
+  timer = timeLeft;
+  timerInterval = setInterval(()=>{
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      stopAlarmBtn.style.display = 'block';
+      alarm.play().catch(()=>{});
+      if(navigator.vibrate) navigator.vibrate([500,200,500]);
+      onBreak = !onBreak;
+      timeLeft = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
+      updateTimerDisplay();
+      return;
+    }
+    timeLeft--;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  // timeLeft reste inchangé → permet de reprendre exactement là où on s’est arrêté
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  onBreak = false;
+  timeLeft = parseInt(studyTimeInput.value)*60;
+  updateTimerDisplay();
+}
+// -------------------------------------------------------------------
 
 function updateUI() {
   xpText.textContent = xp;
@@ -106,109 +148,15 @@ function updateObjectivesUI(){
   <p>Progression : ${objectives.dailyMinutes} / ${studyTimeInput.value} min</p>`;
 }
 
-function updateTimerDisplay() {
-  let minutes = Math.floor(timer/60);
-  let seconds = timer % 60;
-  timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
-}
-
-alarmSelect.addEventListener('change', ()=> { alarm.src = alarmSelect.value; });
-studyTimeInput.addEventListener('change', ()=>{ if(!onBreak) { timer = parseInt(studyTimeInput.value)*60; updateTimerDisplay(); updateObjectivesUI(); } });
-breakTimeInput.addEventListener('change', ()=>{ if(onBreak) { timer = parseInt(breakTimeInput.value)*60; updateTimerDisplay(); } });
-
-function startTimer() {
-  if(timerInterval) return;
-  if(!endTime) endTime = Date.now() + timer*1000;
-  timerInterval = setInterval(()=>{
-    timer = Math.round((endTime - Date.now())/1000);
-    if(timer <= 0){
-      clearInterval(timerInterval);
-      timerInterval = null;
-      stopAlarmBtn.style.display = 'block';
-      alarm.play().catch(()=>{});
-      if(navigator.vibrate) navigator.vibrate([500,200,500]);
-    }
-    updateTimerDisplay();
-  },1000);
-}
-
-function pauseTimer(){ clearInterval(timerInterval); timerInterval=null; }
-
-function resetTimer(){ clearInterval(timerInterval); timerInterval=null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); }
-
-function gainXP(amount){
-  xp += amount;
-  const xpPopup = document.createElement('div');
-  xpPopup.textContent = `+${amount} XP`;
-  xpPopup.style.position = 'absolute';
-  xpPopup.style.top='50%';
-  xpPopup.style.left='50%';
-  xpPopup.style.transform='translate(-50%,-50%)';
-  xpPopup.style.fontSize='24px';
-  xpPopup.style.color='gold';
-  xpPopup.style.fontWeight='bold';
-  xpPopup.style.transition='all 1s ease-out';
-  document.body.appendChild(xpPopup);
-  setTimeout(()=>{ xpPopup.style.top='30%'; xpPopup.style.opacity='0'; },50);
-  setTimeout(()=>{ document.body.removeChild(xpPopup); },1050);
-  while(xp>=xpToLevel){ xp -= xpToLevel; level++; avatar.style.transform='scale(1.5)'; setTimeout(()=>{ avatar.style.transform='scale(1)'; },300);}
-  updateUI();
-}
-
+// ----------------- BOUTONS -----------------
 document.getElementById('startBtn').addEventListener('click', startTimer);
 document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
 document.getElementById('resetBtn').addEventListener('click', resetTimer);
+// -------------------------------------------
 
-document.getElementById('resetAllBtn').addEventListener('click', ()=>{
-  let confirmations=0;
-  function ask(){ if(confirm("Êtes-vous sûr ?")){ confirmations++; if(confirmations<3) ask(); else{ localStorage.clear(); xp=0; level=1; streak={count:0,lastDate:null}; objectives={dailyMinutes:0}; onBreak=false; clearInterval(timerInterval); timerInterval=null; timer=parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); updateUI(); updateObjectivesUI(); message.textContent="Tout a été réinitialisé ✅"; } } }
-  ask();
-});
-
-stopAlarmBtn.addEventListener('click', ()=>{
-  stopAlarmBtn.style.display = 'none';
-  alarm.pause();
-  alarm.currentTime = 0;
-  if(!onBreak){
-    const earnedXP = parseInt(studyTimeInput.value)*2;
-    gainXP(earnedXP);
-    objectives.dailyMinutes += parseInt(studyTimeInput.value);
-    updateObjectivesUI();
-    message.textContent = `Session terminée! 🎉 +${earnedXP} XP. Pause commence!`;
-
-    // Streak / Étincelles
-    const today = new Date().toDateString();
-    if(streak.lastDate !== today){
-      streak.count++;
-      streak.lastDate = today;
-      localStorage.setItem('streak', JSON.stringify(streak));
-      updateStreakUI();
-      message.textContent += ` ✨ Tu as ${streak.count} Étincelles aujourd'hui !`;
-    }
-
-    onBreak = true;
-    timer = parseInt(breakTimeInput.value)*60;
-  } else {
-    message.textContent = "Pause terminée! Retour à l'étude 💪";
-    onBreak = false;
-    timer = parseInt(studyTimeInput.value)*60;
-  }
-  endTime = Date.now() + timer*1000;
-  startTimer();
-});
-
-window.addEventListener('load', ()=>{
-  let savedEndTime = localStorage.getItem('endTime');
-  if(savedEndTime){
-    endTime = parseInt(savedEndTime);
-    onBreak = localStorage.getItem('onBreak')==='true';
-    timer = Math.round((endTime - Date.now())/1000);
-    if(timer<0) timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
-  }
-  updateUI();
-  updateObjectivesUI();
-});
-
+updateTimerDisplay();
+updateUI();
+updateObjectivesUI();
 </script>
 </body>
 </html>
