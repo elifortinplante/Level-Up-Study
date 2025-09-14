@@ -10,13 +10,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       min-height: 100vh;
       margin: 0;
       padding: 20px;
       color: #333;
+      position: relative;
+      overflow: hidden;
     }
-
     h1 { margin-bottom: 10px; text-align: center; }
     .avatar { font-size: 100px; margin: 20px 0; transition: transform 0.3s; }
     .xp-bar { width: 300px; height: 25px; background: #eee; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
@@ -63,7 +63,6 @@
   </div>
 
   <script>
-    // Variables XP et niveau
     let level = parseInt(localStorage.getItem('level')) || 1;
     let xp = parseInt(localStorage.getItem('xp')) || 0;
     const xpToLevel = 100;
@@ -82,22 +81,36 @@
     let timerInterval = null;
     let onBreak = false;
 
+    // Tableau d’emojis pour niveaux 1–99
+    const emojis = [
+      '🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','👑','🏆',
+      '✨','🌟','💫','🌈','🔥','⚡','🌙','☀️','🌻','🌸',
+      '🍀','🍎','🍇','🍉','🍌','🍓','🥑','🥦','🥕','🌽',
+      '🏀','⚽','🏐','🎾','🎮','🎲','🎯','🎹','🎸','🥁',
+      '🚗','🚀','🛸','🚁','🚤','🛶','🏰','🏯','🏟️','🗼',
+      '🎁','🎈','🎉','🎊','🎃','🎄','🎂','🍰','🍩','🍪',
+      '💎','🔮','🪐','🧸','🛍️','📚','📖','✏️','🖊️','🖌️',
+      '🛹','🚴','🏊','🤹','🧗','🪁','🎣','🪀','🛷','🪃',
+      '🦋','🐝','🐞','🕊️','🦅','🦉','🦄','🐙','🦑','🦐',
+      '🧩','🧸','🪀','🪁','🪄','🎤','🎧','🎼','🎷','🎺',
+      '🛡️','⚔️','🏹','🗡️','🪓','⛏️','🪃','🧱','🪜','🛎️'
+    ];
+
     function updateUI() {
       xpText.textContent = xp;
       levelText.textContent = level;
       let percent = Math.min((xp / xpToLevel) * 100, 100);
       xpFill.style.width = percent + '%';
 
-      if(level < 3) avatar.textContent = '🐣';
-      else if(level < 5) avatar.textContent = '🐥';
-      else if(level < 8) avatar.textContent = '🐔';
-      else avatar.textContent = '🦄';
+      if(level === 100) {
+        avatar.innerHTML = '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" alt="Trophée d\'or" style="width: 100px; height: auto;">';
+      } else {
+        avatar.textContent = emojis[Math.min(level-1, emojis.length-1)];
+      }
 
       localStorage.setItem('xp', xp);
       localStorage.setItem('level', level);
     }
-
-    updateUI();
 
     function updateTimerDisplay() {
       let minutes = Math.floor(timer / 60);
@@ -107,6 +120,9 @@
 
     function startTimer() {
       if(timerInterval) return;
+      const sessionDuration = parseInt(studyTimeInput.value);
+      const breakDuration = parseInt(breakTimeInput.value);
+
       timerInterval = setInterval(() => {
         timer--;
         updateTimerDisplay();
@@ -114,30 +130,64 @@
           clearInterval(timerInterval);
           timerInterval = null;
           if(!onBreak) {
-            gainXP(50);
-            message.textContent = "Session terminée! 🎉 Prends ta pause.";
+            const earnedXP = sessionDuration * 2;
+            gainXP(earnedXP);
+            message.textContent = `Session terminée! 🎉 +${earnedXP} XP. Prends ta pause.`;
             onBreak = true;
-            timer = parseInt(breakTimeInput.value) * 60;
+            timer = breakDuration * 60;
             startTimer();
             checkChallenges();
           } else {
             message.textContent = "Pause terminée! Retour à l'étude 💪";
             onBreak = false;
-            timer = parseInt(studyTimeInput.value) * 60;
+            timer = sessionDuration * 60;
           }
         }
       }, 1000);
     }
 
     function pauseTimer() { clearInterval(timerInterval); timerInterval = null; }
-    function resetTimer() { clearInterval(timerInterval); timerInterval = null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; updateTimerDisplay(); }
+    function resetTimer() { 
+      clearInterval(timerInterval); 
+      timerInterval = null; 
+      timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; 
+      updateTimerDisplay(); 
+    }
 
     function gainXP(amount) {
       xp += amount;
+
+      // Pop-up XP
+      const xpPopup = document.createElement('div');
+      xpPopup.textContent = `+${amount} XP`;
+      xpPopup.style.position = 'absolute';
+      xpPopup.style.top = '50%';
+      xpPopup.style.left = '50%';
+      xpPopup.style.transform = 'translate(-50%, -50%)';
+      xpPopup.style.fontSize = '24px';
+      xpPopup.style.color = '#ffd700';
+      xpPopup.style.fontWeight = 'bold';
+      xpPopup.style.opacity = '1';
+      xpPopup.style.transition = 'all 1s ease-out';
+      document.body.appendChild(xpPopup);
+
+      setTimeout(() => {
+        xpPopup.style.top = '40%';
+        xpPopup.style.opacity = '0';
+      }, 50);
+
+      setTimeout(() => { xpPopup.remove(); }, 1000);
+
+      // Niveaux
       while(xp >= xpToLevel) {
         xp -= xpToLevel;
-        level++;
-        message.textContent = `🎉 Niveau supérieur ! Niveau ${level}`;
+        if(level < 100) {
+          level++;
+          // Animation level-up
+          avatar.style.transform = 'scale(1.5)';
+          message.textContent = `🎉 Niveau supérieur ! Niveau ${level}`;
+          setTimeout(() => { avatar.style.transform = 'scale(1)'; }, 500);
+        }
       }
       updateUI();
     }
@@ -145,7 +195,6 @@
     function checkChallenges() {
       const challenge1 = document.getElementById('challenge1');
       const challenge2 = document.getElementById('challenge2');
-
       if(xp >= 50) challenge1.classList.add('completed');
       if(level >= 2) challenge2.classList.add('completed');
     }
@@ -164,6 +213,7 @@
     });
 
     updateTimerDisplay();
+    updateUI();
   </script>
 </body>
 </html>
