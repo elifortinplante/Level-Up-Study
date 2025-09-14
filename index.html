@@ -99,9 +99,20 @@ function updateTimerDisplay() {
 
 alarmSelect.addEventListener('change', ()=> { alarm.src = alarmSelect.value; });
 
+// Mettre à jour le timer quand l’utilisateur change les valeurs
+studyTimeInput.addEventListener('change', ()=>{
+  if(!onBreak) timer = parseInt(studyTimeInput.value)*60;
+  updateTimerDisplay();
+});
+breakTimeInput.addEventListener('change', ()=>{
+  if(onBreak) timer = parseInt(breakTimeInput.value)*60;
+  updateTimerDisplay();
+});
+
 function startTimer() {
   if(timerInterval) return;
-  if(!endTime) endTime = Date.now() + timer*1000;
+  timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
+  endTime = Date.now() + timer*1000;
   localStorage.setItem('endTime', endTime);
   localStorage.setItem('onBreak', onBreak);
 
@@ -139,72 +150,6 @@ stopAlarmBtn.addEventListener('click', ()=>{
 });
 
 function pauseTimer(){ clearInterval(timerInterval); timerInterval = null; }
-function resetTimer(){ clearInterval(timerInterval); timerInterval=null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; updateTimerDisplay(); }
-
-function gainXP(amount){
-  xp += amount;
-  const xpPopup = document.createElement('div');
-  xpPopup.textContent = `+${amount} XP`;
-  xpPopup.style.position = 'absolute';
-  xpPopup.style.top = '50%';
-  xpPopup.style.left = '50%';
-  xpPopup.style.transform = 'translate(-50%,-50%)';
-  xpPopup.style.fontSize = '24px';
-  xpPopup.style.color = 'gold';
-  xpPopup.style.fontWeight='bold';
-  xpPopup.style.transition='all 1s ease-out';
-  document.body.appendChild(xpPopup);
-  setTimeout(()=>{ xpPopup.style.top='30%'; xpPopup.style.opacity='0'; },50);
-  setTimeout(()=>{ document.body.removeChild(xpPopup); },1050);
-
-  while(xp>=xpToLevel){
-    xp -= xpToLevel;
-    level++;
-    avatar.style.transform='scale(1.5)';
-    setTimeout(()=>{ avatar.style.transform='scale(1)'; },300);
-  }
-  updateUI();
-}
-
-document.getElementById('startBtn').addEventListener('click', startTimer);
-document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
-document.getElementById('resetBtn').addEventListener('click', resetTimer);
-
-document.getElementById('resetAllBtn').addEventListener('click', ()=>{
-  let confirmations = 0;
-  function askConfirmation(){
-    if(confirm("Êtes-vous sûr ?")){
-      confirmations++;
-      if(confirmations<3){ askConfirmation(); }
-      else{
-        localStorage.clear();
-        xp=0; level=1; onBreak=false;
-        clearInterval(timerInterval); timerInterval=null;
-        timer=parseInt(studyTimeInput.value)*60;
-        endTime = null;
-        updateTimerDisplay();
-        updateUI();
-        message.textContent="Tout a été réinitialisé ✅";
-      }
-    }
-  }
-  askConfirmation();
-});
-
-window.addEventListener('load', ()=>{
-  let savedEndTime = localStorage.getItem('endTime');
-  if(savedEndTime){
-    endTime = parseInt(savedEndTime);
-    onBreak = localStorage.getItem('onBreak')==='true';
-    timer = Math.round((endTime - Date.now())/1000);
-    if(timer<0) timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
-    updateTimerDisplay();
-    updateUI();
-  }
-});
-
-updateUI();
-updateTimerDisplay();
-</script>
-</body>
-</html>
+function resetTimer(){ 
+  clearInterval(timerInterval); 
+  timerInterval
