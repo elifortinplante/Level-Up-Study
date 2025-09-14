@@ -53,12 +53,12 @@ Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
 let level = parseInt(localStorage.getItem('level')) || 1;
 let xp = parseInt(localStorage.getItem('xp')) || 0;
 const xpToLevel = 100;
+const XP_PER_MINUTE = 2;
 
 const avatar = document.getElementById('avatar');
 const xpFill = document.getElementById('xpFill');
 const xpText = document.getElementById('xp');
 const levelText = document.getElementById('level');
-const message = document.getElementById('message');
 const timerEl = document.getElementById('timer');
 const studyTimeInput = document.getElementById('studyTime');
 const breakTimeInput = document.getElementById('breakTime');
@@ -69,12 +69,12 @@ const emojis = ['🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','
 let streak = JSON.parse(localStorage.getItem('streak')) || { count: 0, lastDate: null };
 let objectives = { dailyMinutes: 0 };
 
-// ------------------- TIMER / PAUSE / CONTINUATION PAGE -------------------
 let timerInterval = null;
-let timeLeft = parseInt(studyTimeInput.value) * 60;
+let timeLeft = parseInt(studyTimeInput.value)*60;
 let onBreak = false;
 let endTime = localStorage.getItem('endTime') ? parseInt(localStorage.getItem('endTime')) : null;
 
+// ------------------- TIMER -------------------
 function updateTimerDisplay() {
   let minutes = Math.floor(timeLeft / 60);
   let seconds = timeLeft % 60;
@@ -82,17 +82,30 @@ function updateTimerDisplay() {
 }
 
 function startTimer() {
-  if (timerInterval) return;
-  if (!endTime) endTime = Date.now() + timeLeft * 1000;
+  if(timerInterval) return;
+  if(!endTime) endTime = Date.now() + timeLeft*1000;
   localStorage.setItem('endTime', endTime);
 
   timerInterval = setInterval(()=>{
-    timeLeft = Math.round((endTime - Date.now()) / 1000);
-    if (timeLeft <= 0) {
+    timeLeft = Math.round((endTime - Date.now())/1000);
+    if(timeLeft <=0){
       clearInterval(timerInterval);
       timerInterval = null;
-      // vibration du téléphone
+
+      // ajouter XP si session d'étude
+      if(!onBreak){
+        xp += Math.round(studyTimeInput.value*XP_PER_MINUTE);
+        if(xp >= xpToLevel){
+            xp -= xpToLevel;
+            level++;
+        }
+      }
+
+      updateUI();
+
+      // vibration
       if(navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
+
       // bascule étude/pause
       onBreak = !onBreak;
       timeLeft = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
@@ -102,56 +115,40 @@ function startTimer() {
       return;
     }
     updateTimerDisplay();
-  }, 1000);
+  },1000);
 }
 
 function pauseTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
-  endTime = Date.now() + timeLeft*1000;
+  endTime = Date.now()+timeLeft*1000;
   localStorage.setItem('endTime', endTime);
 }
 
 function resetTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
-  onBreak = false;
-  timeLeft = parseInt(studyTimeInput.value)*60;
-  endTime = null;
+  onBreak=false;
+  timeLeft=parseInt(studyTimeInput.value)*60;
+  endTime=null;
   localStorage.removeItem('endTime');
   updateTimerDisplay();
 }
 
-// Recharge de page
-window.addEventListener('load', ()=>{
-  if (localStorage.getItem('endTime')) {
-    endTime = parseInt(localStorage.getItem('endTime'));
-    timeLeft = Math.max(Math.round((endTime - Date.now()) / 1000), 0);
-    if (timeLeft > 0) startTimer();
-    else {
-      onBreak = !onBreak;
-      timeLeft = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
-      endTime = null;
-      updateTimerDisplay();
-    }
-  }
-});
-// -------------------------------------------------------------------
-
-function updateUI() {
-  xpText.textContent = xp;
-  levelText.textContent = level;
-  let percent = Math.min((xp / xpToLevel) * 100, 100);
-  xpFill.style.width = percent + '%';
-  avatar.innerHTML = (level===100) ? '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" style="width:100px;">' : emojis[Math.min(level-1, emojis.length-1)];
+// ------------------- UI -------------------
+function updateUI(){
+  document.getElementById('xp').textContent = xp;
+  document.getElementById('level').textContent = level;
+  xpFill.style.width = Math.min((xp/xpToLevel)*100,100)+'%';
+  avatar.innerHTML = (level===100) ? '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" style="width:100px;">' : emojis[Math.min(level-1,emojis.length-1)];
   updateStreakUI();
+  updateObjectivesUI();
   localStorage.setItem('xp', xp);
   localStorage.setItem('level', level);
 }
 
 function updateStreakUI(){
-  const streakEl = document.getElementById('streak');
-  streakEl.textContent = '🔥'.repeat(streak.count);
+  document.getElementById('streak').textContent = '🔥'.repeat(streak.count);
 }
 
 function updateObjectivesUI(){
@@ -163,7 +160,41 @@ function updateObjectivesUI(){
 document.getElementById('startBtn').addEventListener('click', startTimer);
 document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
 document.getElementById('resetBtn').addEventListener('click', resetTimer);
-// -------------------------------------------
+
+// ----------------- RESET TOUT -----------------
+document.getElementById('resetAllBtn').addEventListener('click', ()=>{
+  let c=0;
+  function confirmStep(){
+    if(c>=3){
+      xp=0; level=1; streak={count:0,lastDate:null}; objectives={dailyMinutes:0};
+      resetTimer();
+      updateUI();
+      alert('Tout a été réinitialisé ✅');
+      return;
+    }
+    if(confirm(`Êtes-vous sûr ? (${c+1}/3)`)){
+      c++;
+      confirmStep();
+    }
+  }
+  confirmStep();
+});
+
+// ----------------- LOAD PAGE -----------------
+window.addEventListener('load', ()=>{
+  if(localStorage.getItem('endTime')){
+    endTime=parseInt(localStorage.getItem('endTime'));
+    timeLeft=Math.max(Math.round((endTime-Date.now())/1000),0);
+    if(timeLeft>0) startTimer();
+    else {
+      onBreak=!onBreak;
+      timeLeft=onBreak?parseInt(breakTimeInput.value)*60:parseInt(studyTimeInput.value)*60;
+      endTime=null;
+      updateTimerDisplay();
+    }
+  }
+  updateUI();
+});
 
 updateTimerDisplay();
 updateUI();
