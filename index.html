@@ -1,53 +1,59 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Level Up Study</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #74ebd5, #ACB6E5); display:flex; flex-direction:column; align-items:center; min-height:100vh; margin:0; padding:20px; color:#333; position:relative;}
-    h1 { text-align:center; margin-bottom:10px; }
-    .avatar { font-size:100px; margin:20px 0; transition: transform 0.3s; }
-    .xp-bar { width:300px; height:25px; background:#eee; border-radius:12px; overflow:hidden; margin-bottom:20px; }
-    .xp-fill { height:100%; width:0%; background:#ffd700; transition:width 0.3s; }
-    .timer { font-size:40px; margin-bottom:20px; }
-    .buttons button { font-size:18px; padding:10px 20px; margin:5px; border:none; border-radius:10px; cursor:pointer; transition: transform 0.2s; }
-    .buttons button:hover { transform: scale(1.1); }
-    .message { font-size:18px; margin-top:20px; min-height:24px; text-align:center; }
-    .settings { margin-bottom:20px; }
-    .settings input, .settings select { padding:5px; margin:0 5px; border-radius:5px; border:1px solid #ccc; }
-    #resetAllBtn { position:absolute; top:10px; right:10px; padding:8px 12px; border-radius:8px; border:none; background:#ff4d4d; color:white; cursor:pointer; }
-    #stopAlarmBtn { display:none; margin-top:10px; background:#4CAF50; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
-  </style>
+<meta charset="UTF-8">
+<title>Level Up Study</title>
+<style>
+body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #74ebd5, #ACB6E5); display:flex; flex-direction:column; align-items:center; min-height:100vh; margin:0; padding:20px; color:#333; position:relative;}
+h1 { text-align:center; margin-bottom:10px; }
+.avatar { font-size:100px; margin:20px 0; transition: transform 0.3s; }
+#streak { font-size:24px; margin-bottom:10px; }
+.xp-bar { width:300px; height:25px; background:#eee; border-radius:12px; overflow:hidden; margin-bottom:10px; }
+.xp-fill { height:100%; width:0%; background:#ffd700; transition:width 0.3s; }
+.timer { font-size:40px; margin-bottom:10px; }
+.buttons button { font-size:18px; padding:10px 20px; margin:5px; border:none; border-radius:10px; cursor:pointer; transition: transform 0.2s; }
+.buttons button:hover { transform: scale(1.1); }
+.message { font-size:18px; margin-top:20px; min-height:24px; text-align:center; }
+.settings { margin-bottom:20px; }
+.settings input, .settings select { padding:5px; margin:0 5px; border-radius:5px; border:1px solid #ccc; }
+#resetAllBtn { position:absolute; top:10px; right:10px; padding:8px 12px; border-radius:8px; border:none; background:#ff4d4d; color:white; cursor:pointer; }
+#stopAlarmBtn { display:none; margin-top:10px; background:#4CAF50; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
+#objectives { margin-top:10px; font-size:16px; text-align:center; }
+</style>
 </head>
 <body>
 
 <h1>📚 Level Up Study</h1>
-
 <button id="resetAllBtn">Tout réinitialiser</button>
 
 <div class="avatar" id="avatar">🐣</div>
+<div id="streak">🔥🔥🔥</div>
 <div>Niveau : <span id="level">1</span></div>
 <div class="xp-bar"><div class="xp-fill" id="xpFill"></div></div>
 <div>XP : <span id="xp">0</span> / 100</div>
 
 <div class="settings">
-  Durée étude (min): <input type="number" id="studyTime" value="25" min="1">  
-  Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
-  <label for="alarmSelect">Sonnerie :</label>
-  <select id="alarmSelect">
-    <option value="audio/You Are My Sunshine.mp3" selected>You Are My Sunshine 🎵</option>
-  </select>
+Durée étude (min): <input type="number" id="studyTime" value="25" min="1">
+Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
+<label for="alarmSelect">Sonnerie :</label>
+<select id="alarmSelect">
+<option value="audio/You Are My Sunshine.mp3" selected>You Are My Sunshine 🎵</option>
+</select>
 </div>
 
 <div class="timer" id="timer">25:00</div>
 <div class="buttons">
-  <button id="startBtn">Démarrer</button>
-  <button id="pauseBtn">Pause</button>
-  <button id="resetBtn">Réinitialiser</button>
+<button id="startBtn">Démarrer</button>
+<button id="pauseBtn">Pause</button>
+<button id="resetBtn">Réinitialiser</button>
 </div>
 
 <button id="stopAlarmBtn">OK ✅</button>
 <div class="message" id="message"></div>
+<div id="objectives">
+<p>Objectif du jour : 25 min d’étude</p>
+<p>Progression : 0 / 25 min</p>
+</div>
 
 <audio id="alarm" preload="auto"></audio>
 
@@ -67,13 +73,17 @@ const alarmSelect = document.getElementById('alarmSelect');
 const stopAlarmBtn = document.getElementById('stopAlarmBtn');
 const studyTimeInput = document.getElementById('studyTime');
 const breakTimeInput = document.getElementById('breakTime');
+const objectivesEl = document.getElementById('objectives');
 
 let onBreak = false;
-let timer = parseInt(studyTimeInput.value) * 60;
+let timer = parseInt(studyTimeInput.value)*60;
 let timerInterval = null;
 let endTime = null;
 
 const emojis = ['🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','👑','🏆','✨','🌟','💫','🌈','🔥','⚡','🌙','☀️','🌻','🌸','🍀','🍎','🍇','🍉','🍌','🍓','🥑','🥦','🥕','🌽','🏀','⚽','🏐','🎾','🎮','🎲','🎯','🎹','🎸','🥁','🚗','🚀','🛸','🚁','🚤','🛶','🏰','🏯','🏟️','🗼','🎁','🎈','🎉','🎊','🎃','🎄','🎂','🍰','🍩','🍪','💎','🔮','🪐','🧸','🛍️','📚','📖','✏️','🖊️','🖌️','🛹','🚴','🏊','🤹','🧗','🪁','🎣','🪀','🛷','🪃','🦋','🐝','🐞','🕊️','🦅','🦉','🦄','🐙','🦑','🦐','🧩','🧸','🪀','🪁','🪄','🎤','🎧','🎼','🎷','🎺','🛡️','⚔️','🏹','🗡️','🪓','⛏️','🪃','🧱','🪜','🛎️'];
+
+let streak = JSON.parse(localStorage.getItem('streak')) || { count: 0, lastDate: null };
+let objectives = { dailyMinutes: 0 };
 
 function updateUI() {
   xpText.textContent = xp;
@@ -81,8 +91,19 @@ function updateUI() {
   let percent = Math.min((xp / xpToLevel) * 100, 100);
   xpFill.style.width = percent + '%';
   avatar.innerHTML = (level===100) ? '<img src="https://img.freepik.com/vecteurs-libre/composition-couronne-laurier-trophee-image-realiste-coupe-or-decoree-guirlandes-reflexion_1284-32301.jpg" style="width:100px;">' : emojis[Math.min(level-1, emojis.length-1)];
+  updateStreakUI();
   localStorage.setItem('xp', xp);
   localStorage.setItem('level', level);
+}
+
+function updateStreakUI(){
+  const streakEl = document.getElementById('streak');
+  streakEl.textContent = '🔥'.repeat(streak.count);
+}
+
+function updateObjectivesUI(){
+  objectivesEl.innerHTML = `<p>Objectif du jour : ${studyTimeInput.value} min d’étude</p>
+  <p>Progression : ${objectives.dailyMinutes} / ${studyTimeInput.value} min</p>`;
 }
 
 function updateTimerDisplay() {
@@ -92,16 +113,12 @@ function updateTimerDisplay() {
 }
 
 alarmSelect.addEventListener('change', ()=> { alarm.src = alarmSelect.value; });
-
-studyTimeInput.addEventListener('change', ()=>{ if(!onBreak) { timer = parseInt(studyTimeInput.value)*60; updateTimerDisplay(); } });
+studyTimeInput.addEventListener('change', ()=>{ if(!onBreak) { timer = parseInt(studyTimeInput.value)*60; updateTimerDisplay(); updateObjectivesUI(); } });
 breakTimeInput.addEventListener('change', ()=>{ if(onBreak) { timer = parseInt(breakTimeInput.value)*60; updateTimerDisplay(); } });
 
 function startTimer() {
   if(timerInterval) return;
-  timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
-  endTime = Date.now() + timer*1000;
-  localStorage.setItem('endTime', endTime);
-  localStorage.setItem('onBreak', onBreak);
+  if(!endTime) endTime = Date.now() + timer*1000;
   timerInterval = setInterval(()=>{
     timer = Math.round((endTime - Date.now())/1000);
     if(timer <= 0){
@@ -115,27 +132,9 @@ function startTimer() {
   },1000);
 }
 
-stopAlarmBtn.addEventListener('click', ()=>{
-  stopAlarmBtn.style.display = 'none';
-  alarm.pause();
-  alarm.currentTime = 0;
-  if(!onBreak){
-    const earnedXP = parseInt(studyTimeInput.value)*2;
-    gainXP(earnedXP);
-    message.textContent = `Session terminée! 🎉 +${earnedXP} XP. Pause commence!`;
-    onBreak = true;
-    timer = parseInt(breakTimeInput.value)*60;
-  } else {
-    message.textContent = "Pause terminée! Retour à l'étude 💪";
-    onBreak = false;
-    timer = parseInt(studyTimeInput.value)*60;
-  }
-  endTime = Date.now() + timer*1000;
-  startTimer();
-});
-
 function pauseTimer(){ clearInterval(timerInterval); timerInterval=null; }
-function resetTimer(){ clearInterval(timerInterval); timerInterval=null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; updateTimerDisplay(); }
+
+function resetTimer(){ clearInterval(timerInterval); timerInterval=null; timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); }
 
 function gainXP(amount){
   xp += amount;
@@ -162,8 +161,40 @@ document.getElementById('resetBtn').addEventListener('click', resetTimer);
 
 document.getElementById('resetAllBtn').addEventListener('click', ()=>{
   let confirmations=0;
-  function ask(){ if(confirm("Êtes-vous sûr ?")){ confirmations++; if(confirmations<3) ask(); else{ localStorage.clear(); xp=0; level=1; onBreak=false; clearInterval(timerInterval); timerInterval=null; timer=parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); updateUI(); message.textContent="Tout a été réinitialisé ✅"; } } }
+  function ask(){ if(confirm("Êtes-vous sûr ?")){ confirmations++; if(confirmations<3) ask(); else{ localStorage.clear(); xp=0; level=1; streak={count:0,lastDate:null}; objectives={dailyMinutes:0}; onBreak=false; clearInterval(timerInterval); timerInterval=null; timer=parseInt(studyTimeInput.value)*60; endTime=null; updateTimerDisplay(); updateUI(); updateObjectivesUI(); message.textContent="Tout a été réinitialisé ✅"; } } }
   ask();
+});
+
+stopAlarmBtn.addEventListener('click', ()=>{
+  stopAlarmBtn.style.display = 'none';
+  alarm.pause();
+  alarm.currentTime = 0;
+  if(!onBreak){
+    const earnedXP = parseInt(studyTimeInput.value)*2;
+    gainXP(earnedXP);
+    objectives.dailyMinutes += parseInt(studyTimeInput.value);
+    updateObjectivesUI();
+    message.textContent = `Session terminée! 🎉 +${earnedXP} XP. Pause commence!`;
+
+    // Streak / Étincelles
+    const today = new Date().toDateString();
+    if(streak.lastDate !== today){
+      streak.count++;
+      streak.lastDate = today;
+      localStorage.setItem('streak', JSON.stringify(streak));
+      updateStreakUI();
+      message.textContent += ` ✨ Tu as ${streak.count} Étincelles aujourd'hui !`;
+    }
+
+    onBreak = true;
+    timer = parseInt(breakTimeInput.value)*60;
+  } else {
+    message.textContent = "Pause terminée! Retour à l'étude 💪";
+    onBreak = false;
+    timer = parseInt(studyTimeInput.value)*60;
+  }
+  endTime = Date.now() + timer*1000;
+  startTimer();
 });
 
 window.addEventListener('load', ()=>{
@@ -173,13 +204,11 @@ window.addEventListener('load', ()=>{
     onBreak = localStorage.getItem('onBreak')==='true';
     timer = Math.round((endTime - Date.now())/1000);
     if(timer<0) timer = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
-    updateTimerDisplay();
-    updateUI();
   }
+  updateUI();
+  updateObjectivesUI();
 });
 
-updateUI();
-updateTimerDisplay();
 </script>
 </body>
 </html>
