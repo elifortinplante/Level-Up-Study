@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Level Up Study</title>
+  <style>
+    /* Styles généraux */
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .avatar {
+      font-size: 100px;
+      margin: 20px 0;
+      transition: transform 0.3s;
+    }
+
+    .xp-bar {
+      width: 300px;
+      height: 25px;
+      background: #eee;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .xp-fill {
+      height: 100%;
+      width: 0%;
+      background: #ffd700;
+      transition: width 0.3s;
+    }
+
+    .timer {
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+
+    .buttons button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .buttons button:hover {
+      transform: scale(1.1);
+    }
+
+    .message {
+      font-size: 18px;
+      margin-top: 20px;
+      min-height: 24px;
+      text-align: center;
+    }
+
+    .challenges {
+      margin-top: 20px;
+      text-align: left;
+      width: 300px;
+    }
+
+    .challenge.completed {
+      text-decoration: line-through;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 Level Up Study</h1>
+  <div class="avatar" id="avatar">🐣</div>
+  <div>Niveau : <span id="level">1</span></div>
+  <div class="xp-bar">
+    <div class="xp-fill" id="xpFill"></div>
+  </div>
+  <div>XP : <span id="xp">0</span> / 100</div>
+
+  <div class="timer" id="timer">25:00</div>
+  <div class="buttons">
+    <button id="startBtn">Démarrer</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resetBtn">Réinitialiser</button>
+  </div>
+
+  <div class="message" id="message"></div>
+
+  <div class="challenges">
+    <h3>Défis :</h3>
+    <ul>
+      <li id="challenge1">Étudie 25 min</li>
+      <li id="challenge2">Complète 2 sessions</li>
+    </ul>
+  </div>
+
+  <script>
+    // Variables
+    let level = parseInt(localStorage.getItem('level')) || 1;
+    let xp = parseInt(localStorage.getItem('xp')) || 0;
+    let xpToLevel = 100;
+
+    const avatar = document.getElementById('avatar');
+    const xpFill = document.getElementById('xpFill');
+    const xpText = document.getElementById('xp');
+    const levelText = document.getElementById('level');
+    const message = document.getElementById('message');
+    const timerEl = document.getElementById('timer');
+
+    let timerDuration = 25 * 60; // 25 min
+    let timer = timerDuration;
+    let timerInterval = null;
+    let onBreak = false;
+
+    // Afficher XP et niveau
+    function updateUI() {
+      xpText.textContent = xp;
+      levelText.textContent = level;
+      let percent = Math.min((xp / xpToLevel) * 100, 100);
+      xpFill.style.width = percent + '%';
+
+      // Avatar évolutif selon le niveau
+      if(level < 3) avatar.textContent = '🐣';
+      else if(level < 5) avatar.textContent = '🐥';
+      else if(level < 8) avatar.textContent = '🐔';
+      else avatar.textContent = '🦄';
+
+      localStorage.setItem('xp', xp);
+      localStorage.setItem('level', level);
+    }
+
+    updateUI();
+
+    // Timer
+    function startTimer() {
+      if(timerInterval) return;
+      timerInterval = setInterval(() => {
+        timer--;
+        updateTimerDisplay();
+        if(timer <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          if(!onBreak) {
+            gainXP(50); // +50 XP pour session
+            message.textContent = "Session terminée! 🎉 Prends ta pause de 5 min.";
+            onBreak = true;
+            timer = 5 * 60; // pause 5 min
+            startTimer();
+            checkChallenges();
+          } else {
+            message.textContent = "Pause terminée! Retour à l'étude 💪";
+            onBreak = false;
+            timer = 25 * 60;
+          }
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timer = onBreak ? 5 * 60 : 25 * 60;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      let minutes = Math.floor(timer / 60);
+      let seconds = timer % 60;
+      timerEl.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    }
+
+    function gainXP(amount) {
+      xp += amount;
+      while(xp >= xpToLevel) {
+        xp -= xpToLevel;
+        level++;
+        message.textContent = `🎉 Niveau supérieur ! Niveau ${level}`;
+      }
+      updateUI();
+    }
+
+    // Défis simples
+    function checkChallenges() {
+      const challenge1 = document.getElementById('challenge1');
+      const challenge2 = document.getElementById('challenge2');
+
+      if(xp >= 50) challenge1.classList.add('completed');
+      if(level >= 2) challenge2.classList.add('completed');
+    }
+
+    // Boutons
+    document.getElementById('startBtn').addEventListener('click', startTimer);
+    document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
+    document.getElementById('resetBtn').addEventListener('click', resetTimer);
+
+    updateTimerDisplay();
+  </script>
+</body>
+</html>
