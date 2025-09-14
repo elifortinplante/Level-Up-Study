@@ -15,9 +15,8 @@ h1 { text-align:center; margin-bottom:10px; }
 .buttons button:hover { transform: scale(1.1); }
 .message { font-size:18px; margin-top:20px; min-height:24px; text-align:center; }
 .settings { margin-bottom:20px; }
-.settings input, .settings select { padding:5px; margin:0 5px; border-radius:5px; border:1px solid #ccc; }
+.settings input { padding:5px; margin:0 5px; border-radius:5px; border:1px solid #ccc; }
 #resetAllBtn { position:absolute; top:10px; right:10px; padding:8px 12px; border-radius:8px; border:none; background:#ff4d4d; color:white; cursor:pointer; }
-#stopAlarmBtn { display:none; margin-top:10px; background:#4CAF50; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer; }
 #objectives { margin-top:10px; font-size:16px; text-align:center; }
 </style>
 </head>
@@ -35,10 +34,6 @@ h1 { text-align:center; margin-bottom:10px; }
 <div class="settings">
 Durée étude (min): <input type="number" id="studyTime" value="25" min="1">
 Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
-<label for="alarmSelect">Sonnerie :</label>
-<select id="alarmSelect">
-<option value="audio/You Are My Sunshine.mp3" selected>You Are My Sunshine 🎵</option>
-</select>
 </div>
 
 <div class="timer" id="timer">25:00</div>
@@ -48,14 +43,11 @@ Durée pause (min): <input type="number" id="breakTime" value="5" min="1">
 <button id="resetBtn">Réinitialiser</button>
 </div>
 
-<button id="stopAlarmBtn">OK ✅</button>
 <div class="message" id="message"></div>
 <div id="objectives">
 <p>Objectif du jour : 25 min d’étude</p>
 <p>Progression : 0 / 25 min</p>
 </div>
-
-<audio id="alarm" preload="auto"></audio>
 
 <script>
 let level = parseInt(localStorage.getItem('level')) || 1;
@@ -68,9 +60,6 @@ const xpText = document.getElementById('xp');
 const levelText = document.getElementById('level');
 const message = document.getElementById('message');
 const timerEl = document.getElementById('timer');
-const alarm = document.getElementById('alarm');
-const alarmSelect = document.getElementById('alarmSelect');
-const stopAlarmBtn = document.getElementById('stopAlarmBtn');
 const studyTimeInput = document.getElementById('studyTime');
 const breakTimeInput = document.getElementById('breakTime');
 const objectivesEl = document.getElementById('objectives');
@@ -80,10 +69,11 @@ const emojis = ['🐣','🐥','🐔','🦄','🐲','🐱‍👤','🐉','🤖','
 let streak = JSON.parse(localStorage.getItem('streak')) || { count: 0, lastDate: null };
 let objectives = { dailyMinutes: 0 };
 
-// ------------------- TIMER / PAUSE / REPRISE -------------------
+// ------------------- TIMER / PAUSE / CONTINUATION PAGE -------------------
 let timerInterval = null;
-let timeLeft = parseInt(studyTimeInput.value) * 60; // temps restant
-onBreak = false;
+let timeLeft = parseInt(studyTimeInput.value) * 60;
+let onBreak = false;
+let endTime = localStorage.getItem('endTime') ? parseInt(localStorage.getItem('endTime')) : null;
 
 function updateTimerDisplay() {
   let minutes = Math.floor(timeLeft / 60);
@@ -93,21 +83,24 @@ function updateTimerDisplay() {
 
 function startTimer() {
   if (timerInterval) return;
-  // on reprend exactement où on s'était arrêté
-  timer = timeLeft;
+  if (!endTime) endTime = Date.now() + timeLeft * 1000;
+  localStorage.setItem('endTime', endTime);
+
   timerInterval = setInterval(()=>{
+    timeLeft = Math.round((endTime - Date.now()) / 1000);
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       timerInterval = null;
-      stopAlarmBtn.style.display = 'block';
-      alarm.play().catch(()=>{});
-      if(navigator.vibrate) navigator.vibrate([500,200,500]);
+      // vibration du téléphone
+      if(navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
+      // bascule étude/pause
       onBreak = !onBreak;
       timeLeft = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
+      endTime = Date.now() + timeLeft*1000;
+      localStorage.setItem('endTime', endTime);
       updateTimerDisplay();
       return;
     }
-    timeLeft--;
     updateTimerDisplay();
   }, 1000);
 }
@@ -115,7 +108,8 @@ function startTimer() {
 function pauseTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
-  // timeLeft reste inchangé → permet de reprendre exactement là où on s’est arrêté
+  endTime = Date.now() + timeLeft*1000;
+  localStorage.setItem('endTime', endTime);
 }
 
 function resetTimer() {
@@ -123,8 +117,25 @@ function resetTimer() {
   timerInterval = null;
   onBreak = false;
   timeLeft = parseInt(studyTimeInput.value)*60;
+  endTime = null;
+  localStorage.removeItem('endTime');
   updateTimerDisplay();
 }
+
+// Recharge de page
+window.addEventListener('load', ()=>{
+  if (localStorage.getItem('endTime')) {
+    endTime = parseInt(localStorage.getItem('endTime'));
+    timeLeft = Math.max(Math.round((endTime - Date.now()) / 1000), 0);
+    if (timeLeft > 0) startTimer();
+    else {
+      onBreak = !onBreak;
+      timeLeft = onBreak ? parseInt(breakTimeInput.value)*60 : parseInt(studyTimeInput.value)*60;
+      endTime = null;
+      updateTimerDisplay();
+    }
+  }
+});
 // -------------------------------------------------------------------
 
 function updateUI() {
